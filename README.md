@@ -1,4 +1,4 @@
-# Tally: AI-Native Sales Compensation Platform
+# Tally
 
 **Tally** is an AI-native sales commission engine that automates external deal ingestion, financial calculation, and AI-powered insight retrieval using production-ready engineering standards.
 
