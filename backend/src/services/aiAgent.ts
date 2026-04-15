@@ -49,6 +49,9 @@ async function searchPolicy(query: string) {
  * Processes a chat message using Groq's llama-3.3-70b-versatile model.
  */
 export async function processChatMessage(message: string) {
+  const thoughts: string[] = [];
+  thoughts.push('Analyzing user query for financial intent...');
+
   const messages: any[] = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: message },
@@ -96,9 +99,12 @@ export async function processChatMessage(message: string) {
   const responseMessage = response.choices[0].message;
 
   if (responseMessage.tool_calls) {
+    thoughts.push(`Intent identified: ${responseMessage.tool_calls.length > 1 ? 'Multiple' : responseMessage.tool_calls[0].function.name.replace(/_/g, ' ')}.`);
     messages.push(responseMessage);
 
     for (const toolCall of responseMessage.tool_calls) {
+      thoughts.push(`Executing tool: ${toolCall.function.name}...`);
+      
       if (toolCall.function.name === 'get_total_commissions') {
         const total = await getTotalCommissions();
         messages.push({
@@ -119,13 +125,21 @@ export async function processChatMessage(message: string) {
       }
     }
 
+    thoughts.push('Synthesizing final response based on results.');
     const secondResponse = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages,
     });
 
-    return secondResponse.choices[0].message.content;
+    return {
+      response: secondResponse.choices[0].message.content,
+      thoughts
+    };
   }
 
-  return responseMessage.content;
+  thoughts.push('Synthesizing final response.');
+  return {
+    response: responseMessage.content,
+    thoughts
+  };
 }

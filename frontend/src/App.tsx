@@ -28,6 +28,7 @@ interface Commission {
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  thoughts?: string[];
 }
 
 // --- Components ---
@@ -196,7 +197,11 @@ const ChatTab = () => {
         body: JSON.stringify({ message: userMessage }),
       });
       const data = await res.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: data.response, 
+        thoughts: data.thoughts 
+      }]);
     } catch (err) {
       console.error('Chat error:', err);
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }]);
@@ -226,14 +231,38 @@ const ChatTab = () => {
             }`}>
               {msg.role === 'assistant' ? <Bot size={18} /> : <User size={18} />}
             </div>
-            <div className={`max-w-[85%] space-y-2 ${msg.role === 'user' ? 'items-end' : ''}`}>
-              <div className={`rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed ${
-                msg.role === 'assistant' 
-                  ? 'bg-[#F1F1F0] text-[#37352F]' 
-                  : 'bg-[#2383E2] text-white'
-              }`}>
+            <div className={`max-w-[85%] space-y-2 ${msg.role === 'user' ? 'flex flex-col items-end' : ''}`}>
+              {msg.thoughts && msg.thoughts.length > 0 && (
+                <div className="flex flex-col gap-1.5 mb-1 px-1">
+                  {msg.thoughts.map((thought, idx) => (
+                    <motion.div 
+                      key={idx}
+                      initial={{ opacity: 0, x: -5 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ 
+                        duration: 0.4,
+                        delay: idx * 0.2
+                      }}
+                      className="flex items-center gap-2 text-[#9B9A97] text-[13px] font-medium"
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#E5E5E5] shrink-0" />
+                      {thought}
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+              <motion.div 
+                initial={msg.role === 'assistant' ? { opacity: 0, y: 5 } : false}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: msg.role === 'assistant' ? (msg.thoughts?.length || 0) * 0.2 + 0.2 : 0 }}
+                className={`rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed ${
+                  msg.role === 'assistant' 
+                    ? 'bg-[#F1F1F0] text-[#37352F]' 
+                    : 'bg-[#2383E2] text-white'
+                }`}
+              >
                 {msg.content}
-              </div>
+              </motion.div>
             </div>
           </div>
         ))}
