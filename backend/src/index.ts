@@ -34,6 +34,50 @@ app.get('/health', async (req, res) => {
 });
 
 /**
+ * Get total commission stats
+ */
+app.get('/api/stats', async (req, res) => {
+  try {
+    const result = await prisma.commission.aggregate({
+      _sum: {
+        amount: true,
+      },
+    });
+
+    res.json({
+      totalEarned: result._sum.amount || 0,
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+/**
+ * Get recent commissions
+ */
+app.get('/api/commissions', async (req, res) => {
+  try {
+    const commissions = await prisma.commission.findMany({
+      include: {
+        deal: true,
+      },
+      orderBy: {
+        deal: {
+          closedAt: 'desc',
+        },
+      },
+      take: 10,
+    });
+
+    res.json(commissions);
+  } catch (error) {
+    console.error('Error fetching commissions:', error);
+    res.status(500).json({ error: 'Failed to fetch commissions' });
+  }
+});
+
+/**
  * Trigger sub-agent to sync deals from mock CRM
  */
 app.post('/api/sync', async (req, res) => {

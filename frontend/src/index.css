@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "ui-sans-serif", "system-ui", "sans-serif";
+  --color-notion-bg: #FFFFFF;
+  --color-notion-muted: #F9F9F9;
+  --color-notion-border: #E5E5E5;
+  --color-notion-text: #37352F;
+  --color-notion-accent: #2383E2;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-[#37352F] antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Notion-style scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #E5E5E5;
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #D5D5D5;
+  }
+}
+
+@layer components {
+  .notion-card {
+    @apply border border-[#E5E5E5] rounded-lg p-6 bg-white transition-all duration-200;
+  }
+  
+  .notion-btn-primary {
+    @apply bg-[#2383E2] text-white px-4 py-2 rounded-md font-medium hover:bg-[#1a6db3] transition-colors;
+  }
+
+  .notion-tab {
+    @apply px-4 py-2 text-sm font-medium border-b-2 transition-all duration-200;
+  }
+
+  .notion-tab-active {
+    @apply border-[#37352F] text-[#37352F];
+  }
+
+  .notion-tab-inactive {
+    @apply border-transparent text-[#9B9A97] hover:bg-[#F1F1F0] rounded-t-md;
+  }
+}
