@@ -2,6 +2,7 @@ import express from 'express';
 import { Queue } from 'bullmq';
 import prisma from './lib/prisma';
 import { setupDealSyncWorker } from './workers/DealSyncWorker';
+import { processChatMessage } from './services/aiAgent';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -48,6 +49,25 @@ app.post('/api/sync', async (req, res) => {
   } catch (error) {
     console.error('Error triggering sync job:', error);
     res.status(500).json({ status: 'error', message: 'Failed to trigger sync job' });
+  }
+});
+
+/**
+ * AI Agent Chat Endpoint
+ */
+app.post('/api/chat', async (req, res) => {
+  const { message } = req.body;
+
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+
+  try {
+    const response = await processChatMessage(message);
+    res.json({ response });
+  } catch (error) {
+    console.error('AI Agent Error:', error);
+    res.status(500).json({ error: 'Failed to process AI request' });
   }
 });
 
