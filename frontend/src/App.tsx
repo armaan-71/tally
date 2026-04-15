@@ -10,7 +10,10 @@ import {
   User, 
   ChevronRight,
   TrendingUp,
-  Clock
+  Clock,
+  BookOpen,
+  X,
+  FileText
 } from 'lucide-react';
 
 // --- Types ---
@@ -29,6 +32,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   thoughts?: string[];
+  sources?: { id: number; name: string; content: string }[];
 }
 
 // --- Components ---
@@ -174,6 +178,7 @@ const ChatTab = () => {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<{ name: string; content: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -200,13 +205,21 @@ const ChatTab = () => {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: data.response, 
-        thoughts: data.thoughts 
+        thoughts: data.thoughts,
+        sources: data.sources
       }]);
     } catch (err) {
       console.error('Chat error:', err);
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }]);
     } finally {
       setIsTyping(false);
+    }
+  };
+
+  const handleSourceClick = (sourceId: number, messageSources?: { id: number; name: string; content: string }[]) => {
+    const source = messageSources?.find(s => s.id === sourceId);
+    if (source) {
+      setSelectedSource({ name: source.name, content: source.content });
     }
   };
 
@@ -255,13 +268,55 @@ const ChatTab = () => {
                 initial={msg.role === 'assistant' ? { opacity: 0, y: 5 } : false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: msg.role === 'assistant' ? (msg.thoughts?.length || 0) * 0.2 + 0.2 : 0 }}
-                className={`rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed ${
+                className={`rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed shadow-sm ${
                   msg.role === 'assistant' 
                     ? 'bg-[#F1F1F0] text-[#37352F]' 
                     : 'bg-[#2383E2] text-white'
                 }`}
               >
-                {msg.content}
+                {msg.role === 'assistant' ? (
+                  msg.content.split(/(\[\^\d+\])/).map((part, index) => {
+                    const match = part.match(/\[\^(\d+)\]/);
+                    if (match) {
+                      return (
+                        <sup 
+                          key={index} 
+                          className="text-[10px] font-bold text-[#2383E2] bg-[#2383E2]/10 px-1 rounded mx-0.5 cursor-pointer hover:bg-[#2383E2] hover:text-white transition-all select-none"
+                          title={msg.sources?.find(s => s.id === parseInt(match[1]))?.name}
+                          onClick={() => handleSourceClick(parseInt(match[1]), msg.sources)}
+                        >
+                          {match[1]}
+                        </sup>
+                      );
+                    }
+                    return part;
+                  })
+                ) : (
+                  msg.content
+                )}
+
+                {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-[#E5E5E5]/50 overflow-hidden">
+                    <div className="flex items-center gap-1.5 mb-2 text-[#9B9A97] text-[11px] font-bold uppercase tracking-wider">
+                      <BookOpen size={12} />
+                      Sources
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {msg.sources.map((source) => (
+                        <div 
+                          key={source.id}
+                          className="flex items-center gap-1.5 bg-white border border-[#E5E5E5] rounded-full px-2.5 py-1 text-[12px] font-medium text-[#37352F] shadow-sm hover:border-[#2383E2] hover:shadow-md transition-all cursor-pointer group"
+                          onClick={() => handleSourceClick(source.id, msg.sources)}
+                        >
+                          <span className="w-4 h-4 rounded-full bg-[#F1F1F0] flex items-center justify-center text-[9px] font-bold text-[#9B9A97] group-hover:bg-[#2383E2] group-hover:text-white transition-colors">
+                            {source.id}
+                          </span>
+                          {source.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </div>
           </div>
@@ -281,6 +336,60 @@ const ChatTab = () => {
       </div>
 
       <div className="p-6">
+        {/* Modal */}
+        <AnimatePresence>
+          {selectedSource && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-[#37352F]/20 backdrop-blur-sm"
+              onClick={() => setSelectedSource(null)}
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="bg-white rounded-2xl shadow-2xl border border-[#E5E5E5] w-full max-w-xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-6 py-4 border-b border-[#E5E5E5] flex items-center justify-between bg-[#F9F9F9]">
+                  <div className="flex items-center gap-2">
+                    <FileText className="text-[#2383E2]" size={18} />
+                    <h4 className="font-bold text-[#37352F]">{selectedSource.name}</h4>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedSource(null)}
+                    className="p-1.5 hover:bg-[#E5E5E5] rounded-lg transition-colors text-[#9B9A97]"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="p-8">
+                  <div className="bg-[#F1F1F0]/50 rounded-xl p-6 border border-[#E5E5E5] relative">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-[#2383E2] rounded-l-xl" />
+                    <p className="text-[#37352F] text-lg leading-relaxed italic">
+                      "{selectedSource.content}"
+                    </p>
+                  </div>
+                  <div className="mt-6 flex items-center gap-2 text-[#9B9A97] text-xs font-medium">
+                    <BookOpen size={14} />
+                    Retrieved from company knowledge base
+                  </div>
+                </div>
+                <div className="px-6 py-4 bg-[#F9F9F9] border-t border-[#E5E5E5] flex justify-end">
+                  <button 
+                    onClick={() => setSelectedSource(null)}
+                    className="px-4 py-2 bg-[#37352F] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="relative group">
           <input 
             type="text"
