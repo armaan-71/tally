@@ -107,8 +107,8 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
-    const { response, thoughts } = await processChatMessage(message);
-    res.json({ response, thoughts });
+    const { response, thoughts, sources } = await processChatMessage(message);
+    res.json({ response, thoughts, sources });
   } catch (error) {
     console.error('AI Agent Error:', error);
     res.status(500).json({ error: 'Failed to process AI request' });

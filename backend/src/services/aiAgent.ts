@@ -17,7 +17,12 @@ CRITICAL RULES:
 3. If a user asks about rules, policies, or "what happens if...", use the 'search_policy' tool to retrieve relevant context.
 4. Only use tools for financial and policy data. If the user asks something unrelated, politely inform them that you can only assist with these queries.
 5. Always provide the final value in a clear, professional manner.
-6. Do not hallucinate data. If you don't have a tool for it or the search returns no results, say you don't know.`;
+6. Do not hallucinate data. If you don't have a tool for it or the search returns no results, say you don't know.
+
+CITATIONS:
+When you use information from 'search_policy', you MUST cite the source. 
+Use superscript-style citations like [^1], [^2], etc., corresponding to the index of the search results provided.
+At the end of your response, do NOT list the sources yourself. The UI will handle the footer. Just ensure the [^n] markers are in your text.`;
 
 // Define the tool schema
 const GetTotalCommissionsSchema = z.object({});
@@ -42,7 +47,11 @@ async function getTotalCommissions() {
 async function searchPolicy(query: string) {
   const vectorStore = await VectorStore.getInstance();
   const results = await vectorStore.search(query);
-  return JSON.stringify(results.map(r => r.content));
+  return JSON.stringify(results.map((r, index) => ({
+    id: index + 1,
+    content: r.content,
+    source: r.metadata.source || 'Unknown Source'
+  })));
 }
 
 /**
@@ -131,15 +140,33 @@ export async function processChatMessage(message: string) {
       messages,
     });
 
+    const finalResponse = secondResponse.choices[0].message.content;
+    const allSources: any[] = [];
+    for (const msg of messages) {
+      if (msg.role === 'tool' && msg.name === 'search_policy') {
+        const results = JSON.parse(msg.content);
+        results.forEach((r: any) => {
+          if (!allSources.find(s => s.id === r.id)) {
+            allSources.push({ id: r.id, name: r.source, content: r.content });
+          }
+        });
+      }
+    }
+
+    // Only include sources that the model actually cited in the text
+    const citedSources = allSources.filter(s => finalResponse.includes(`[^${s.id}]`));
+
     return {
-      response: secondResponse.choices[0].message.content,
-      thoughts
+      response: finalResponse,
+      thoughts,
+      sources: citedSources
     };
   }
 
   thoughts.push('Synthesizing final response.');
   return {
     response: responseMessage.content,
-    thoughts
+    thoughts,
+    sources: []
   };
 }
