@@ -51,7 +51,7 @@ model Commission {
 model KnowledgeBase {
   id        String                      @id @default(uuid())
   content   String
-  embedding Unsupported("vector(1536)")
+  embedding Unsupported("vector(384)")
   metadata  Json
 
   @@map("knowledge_base")
