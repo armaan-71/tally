@@ -2,20 +2,22 @@ import Groq from 'groq-sdk';
 import { z } from 'zod';
 import prisma from '../lib/prisma';
 import { Decimal } from 'decimal.js';
+import { VectorStore } from './VectorStore';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
 const SYSTEM_PROMPT = `You are a financial AI assistant for Tally, a sales compensation platform.
-Your primary role is to provide accurate financial data regarding commissions.
+Your primary role is to provide accurate financial data regarding commissions and sales policies.
 
 CRITICAL RULES:
 1. DO NOT PERFORM MANAUL MATH. Always use the provided tools to get calculated values (like sums or totals).
 2. If a user asks for total commissions, use the 'get_total_commissions' tool.
-3. Only use tools for financial data. If the user asks something unrelated, politely inform them that you can only assist with financial queries.
-4. Always provide the final value in a clear, professional manner.
-5. Do not hallucinate data. If you don't have a tool for it, say you don't know.`;
+3. If a user asks about rules, policies, or "what happens if...", use the 'search_policy' tool to retrieve relevant context.
+4. Only use tools for financial and policy data. If the user asks something unrelated, politely inform them that you can only assist with these queries.
+5. Always provide the final value in a clear, professional manner.
+6. Do not hallucinate data. If you don't have a tool for it or the search returns no results, say you don't know.`;
 
 // Define the tool schema
 const GetTotalCommissionsSchema = z.object({});
@@ -32,6 +34,15 @@ async function getTotalCommissions() {
 
   const total = result._sum.amount || new Decimal(0);
   return total.toString();
+}
+
+/**
+ * Tool to search the policy knowledge base using vector similarity.
+ */
+async function searchPolicy(query: string) {
+  const vectorStore = await VectorStore.getInstance();
+  const results = await vectorStore.search(query);
+  return JSON.stringify(results.map(r => r.content));
 }
 
 /**
@@ -53,6 +64,23 @@ export async function processChatMessage(message: string) {
           type: 'object',
           properties: {},
           required: [],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'search_policy',
+        description: 'Search for company policies, rules, and logic details (e.g., clawbacks, rates, eligibility).',
+        parameters: {
+          type: 'object',
+          properties: {
+            query: {
+              type: 'string',
+              description: 'The search query or rule the user is asking about.',
+            },
+          },
+          required: ['query'],
         },
       },
     },
@@ -78,6 +106,15 @@ export async function processChatMessage(message: string) {
           role: 'tool',
           name: 'get_total_commissions',
           content: total,
+        });
+      } else if (toolCall.function.name === 'search_policy') {
+        const args = JSON.parse(toolCall.function.arguments);
+        const policyContext = await searchPolicy(args.query);
+        messages.push({
+          tool_call_id: toolCall.id,
+          role: 'tool',
+          name: 'search_policy',
+          content: policyContext,
         });
       }
     }
