@@ -4,6 +4,11 @@
 
 ---
 
+https://github.com/user-attachments/assets/d6d6e917-c6cc-4477-a059-b85c18f5e04c
+
+
+
+
 ## 🚀 Key Features
 
 - **Automated Deal Sync**: Asynchronous ingestion of CRM data using **BullMQ** and **Redis**.
